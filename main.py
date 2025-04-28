@@ -166,7 +166,14 @@ class BotManager:
             
             # Garder le bot en vie
             while True:
-                await asyncio.sleep(1)
+                try:
+                    await asyncio.sleep(1)
+                except KeyboardInterrupt:
+                    print("\n⚠️ Arrêt du bot par l'utilisateur...")
+                    break
+                except Exception as e:
+                    print(f"❌ Erreur inattendue : {str(e)}")
+                    continue
 
         except Exception as e:
             print(f"❌ Erreur inattendue : {str(e)}")
@@ -504,24 +511,38 @@ Commandes disponibles :
             # Vérifier que le token et le chat ID sont configurés
             if not self.TELEGRAM_BOT_TOKEN or not self.TELEGRAM_CHAT_ID:
                 print("❌ Token ou Chat ID non configuré")
+                print(f"Token : {'Oui' if self.TELEGRAM_BOT_TOKEN else 'Non'}")
+                print(f"Chat ID : {'Oui' if self.TELEGRAM_CHAT_ID else 'Non'}")
                 return
                 
             # Initialiser le bot si nécessaire
             if not self.telegram_bot:
                 print("🤖 Initialisation du bot Telegram...")
-                self.telegram_bot = Bot(token=self.TELEGRAM_BOT_TOKEN)
+                try:
+                    self.telegram_bot = Bot(token=self.TELEGRAM_BOT_TOKEN)
+                    # Tester la connexion
+                    bot_info = await self.telegram_bot.get_me()
+                    print(f"✅ Bot connecté : {bot_info.username}")
+                except Exception as e:
+                    print(f"❌ Erreur lors de l'initialisation du bot : {str(e)}")
+                    return
             
             # Envoyer le message
             print(f"📱 Envoi du message au chat {self.TELEGRAM_CHAT_ID}...")
-            await self.telegram_bot.send_message(
-                chat_id=self.TELEGRAM_CHAT_ID,
-                text=message,
-                parse_mode='HTML'
-            )
-            print("✅ Message envoyé avec succès")
+            try:
+                await self.telegram_bot.send_message(
+                    chat_id=self.TELEGRAM_CHAT_ID,
+                    text=message,
+                    parse_mode='HTML'
+                )
+                print("✅ Message envoyé avec succès")
+            except Exception as e:
+                print(f"❌ Erreur lors de l'envoi du message : {str(e)}")
+                print(f"❌ Type d'erreur : {type(e)}")
+                print(f"❌ Détails de l'erreur : {e.__dict__ if hasattr(e, '__dict__') else 'Pas de détails'}")
             
         except Exception as e:
-            print(f"❌ Erreur lors de l'envoi du message Telegram : {str(e)}")
+            print(f"❌ Erreur générale Telegram : {str(e)}")
             print(f"❌ Type d'erreur : {type(e)}")
             print(f"❌ Détails de l'erreur : {e.__dict__ if hasattr(e, '__dict__') else 'Pas de détails'}")
             # On continue même en cas d'erreur pour ne pas bloquer le traitement
