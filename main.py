@@ -366,39 +366,27 @@ Commandes disponibles :
             try:
                 # Lire le fichier d'entrée
                 with open(context.user_data['input_file'], 'r', encoding='utf-8') as f:
-                    combos = f.readlines()
+                    combos = [line.strip() for line in f if ":" in line]
                 
                 if not combos:
                     raise ValueError("Le fichier est vide")
                 
                 print(f"📊 Nombre de combos à traiter : {len(combos)}")
                 
-                # Filtrer les combos valides
-                valid_combos = []
-                total = len(combos)
-                self.remaining = total
+                # Initialiser les variables globales
+                self.valid_results = []
+                self.remaining = len(combos)
+                self.total_combos = len(combos)
                 self.start_time = time.time()
+                self.last_stats_time = time.time()
                 
                 # Afficher les premiers combos pour vérification
                 print("📋 Premiers combos du fichier :")
                 for i, combo in enumerate(combos[:5]):
-                    print(f"  {i+1}. {combo.strip()}")
+                    print(f"  {i+1}. {combo}")
                 
-                # Traiter les combos avec asyncio.gather
-                tasks = []
-                for combo in combos:
-                    combo = combo.strip()
-                    if "@" in combo and ":" in combo:
-                        tasks.append(self.process_combo(combo, context.user_data['test_email']))
-                
-                # Exécuter toutes les tâches en parallèle
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-                
-                # Filtrer les résultats valides
-                for result in results:
-                    if isinstance(result, str):
-                        valid_combos.append(result)
-                        print(f"✅ Combo valide trouvé : {result}")
+                # Traiter les combos par lots
+                valid_combos = await self.process_combos(combos, context.user_data['test_email'])
                 
                 print(f"✅ Combos valides trouvés : {len(valid_combos)}")
                 
@@ -417,7 +405,7 @@ Commandes disponibles :
 - Fichier d'entrée : {os.path.basename(context.user_data['input_file'])}
 - Fichier de sortie : {context.user_data['output_file']}
 - Email de test : {context.user_data['test_email']}
-- Combos traités : {total}
+- Combos traités : {len(combos)}
 - Combos valides trouvés : {len(valid_combos)}
                 """
                 await update.message.reply_text(result_message)
