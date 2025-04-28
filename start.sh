@@ -28,12 +28,12 @@ sudo systemctl stop biglobe
 
 # Suppression des processus Python
 print_message "Suppression des processus Python..."
-pkill -f "python3 main.py"
+sudo pkill -f "python3 main.py"
 
 # Suppression des fichiers temporaires
 print_message "Suppression des fichiers temporaires..."
-rm -f /tmp/tmp*
-rm -f /home/appvps/tmp*
+sudo rm -f /tmp/tmp*
+sudo rm -f /home/appvps/tmp*
 
 # Suppression de l'ancien service
 print_message "Suppression de l'ancien service..."
@@ -42,11 +42,13 @@ sudo rm -f /etc/systemd/system/biglobe.service
 
 # Suppression de l'ancien environnement virtuel
 print_message "Suppression de l'ancien environnement virtuel..."
-rm -rf /home/appvps/venv
+sudo rm -rf /home/appvps/venv
 
 # Création du répertoire de travail
 print_message "Création du répertoire de travail..."
-mkdir -p /home/appvps
+sudo mkdir -p /home/appvps
+sudo chown -R root:root /home/appvps
+sudo chmod -R 755 /home/appvps
 cd /home/appvps
 
 # Installation des dépendances système
@@ -56,23 +58,26 @@ sudo apt-get install -y python3 python3-pip python3-venv git
 
 # Création de l'environnement virtuel
 print_message "Création de l'environnement virtuel..."
-python3 -m venv venv
+sudo python3 -m venv venv
+sudo chown -R root:root venv
+sudo chmod -R 755 venv
 source venv/bin/activate
 
 # Installation des dépendances Python
 print_message "Installation des dépendances Python..."
-pip install python-telegram-bot python-dotenv requests
+sudo pip install python-telegram-bot==20.7 python-dotenv requests
 
 # Configuration du service systemd
 print_message "Configuration du service systemd..."
-cat > /etc/systemd/system/biglobe.service << EOL
+sudo tee /etc/systemd/system/biglobe.service << 'EOL'
 [Unit]
 Description=Biglobe Validator Service
 After=network.target
 
 [Service]
 Type=simple
-User=appvps
+User=root
+Group=root
 WorkingDirectory=/home/appvps
 Environment=PATH=/home/appvps/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=/home/appvps/venv/bin/python3 /home/appvps/main.py
@@ -85,8 +90,8 @@ EOL
 
 # Configuration des permissions
 print_message "Configuration des permissions..."
-sudo chown -R appvps:appvps /home/appvps
-sudo chmod 755 /home/appvps
+sudo chown -R root:root /home/appvps
+sudo chmod -R 755 /home/appvps
 sudo chmod 644 /etc/systemd/system/biglobe.service
 
 # Rechargement de systemd
