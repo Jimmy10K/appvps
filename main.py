@@ -14,6 +14,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     ConversationHandler
 )
+from telegram.error import TelegramError
 from datetime import datetime
 from dotenv import load_dotenv
 import telegram
