@@ -1,0 +1,25 @@
+# Requirements pour le Bot Telegram et le Validateur Biglobe
+
+# Dépendances pour le Bot Telegram
+python-telegram-bot[job-queue]>=20.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+urllib3>=2.0.0
+certifi>=2024.2.2
+charset-normalizer>=3.0.0
+idna>=3.0
+httpx>=0.27.0
+
+# Dépendances pour le Validateur Biglobe
+# Utilise uniquement les bibliothèques standard Python :
+# - smtplib
+# - ssl
+# - threading
+# - time
+# - concurrent.futures
+# - os
+
+# Note : Python 3.8 ou supérieur requis
+
+# Dépendances système requises sur Debian
+# sudo apt-get install python3-venv python3-pip
