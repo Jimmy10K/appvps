@@ -498,12 +498,21 @@ Commandes disponibles :
 
     async def send_telegram_message(self, message: str) -> None:
         """Envoie un message sur Telegram"""
-        if not self.telegram_bot:
-            self.telegram_bot = Bot(token=self.TELEGRAM_BOT_TOKEN)
         try:
+            print(f"📤 Tentative d'envoi de message Telegram : {message[:50]}...")
+            if not self.telegram_bot:
+                print("🤖 Initialisation du bot Telegram...")
+                self.telegram_bot = Bot(token=self.TELEGRAM_BOT_TOKEN)
+            
+            print(f"📱 Envoi du message au chat {self.TELEGRAM_CHAT_ID}...")
             await self.telegram_bot.send_message(chat_id=self.TELEGRAM_CHAT_ID, text=message)
+            print("✅ Message envoyé avec succès")
+            
         except Exception as e:
-            print(f"[!] Erreur Telegram: {e}")
+            print(f"❌ Erreur lors de l'envoi du message Telegram : {str(e)}")
+            print(f"❌ Type d'erreur : {type(e)}")
+            print(f"❌ Détails de l'erreur : {e.__dict__ if hasattr(e, '__dict__') else 'Pas de détails'}")
+            # On continue même en cas d'erreur pour ne pas bloquer le traitement
 
     async def send_stats(self) -> None:
         """Envoie les statistiques de vérification"""
