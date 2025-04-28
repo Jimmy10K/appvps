@@ -60,9 +60,63 @@ source venv/bin/activate
 print_message "Installation des dépendances..."
 pip3 install -r requirements.txt
 
-# Démarrer le bot
-print_message "Démarrage du bot..."
-python3 main.py
+# Configuration du service systemd
+echo "⚙️ Configuration du service systemd..."
+cat > /etc/systemd/system/biglobe.service << EOF
+[Unit]
+Description=Biglobe Validator Service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/biglobe
+Environment=PYTHONPATH=/opt/biglobe
+ExecStart=/opt/biglobe/venv/bin/python3 /opt/biglobe/main.py
+Restart=always
+RestartSec=10
+StartLimitBurst=0
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Configuration SSH pour éviter les déconnexions
+echo "🔌 Configuration SSH..."
+cat >> /etc/ssh/sshd_config << EOF
+ClientAliveInterval 60
+ClientAliveCountMax 3
+EOF
+
+# Redémarrage des services
+echo "🔄 Redémarrage des services..."
+systemctl daemon-reload
+systemctl restart sshd
+
+# Installation de screen
+echo "📺 Installation de screen..."
+apt install screen -y
+
+# Création de la session screen
+echo "🖥️ Création de la session screen..."
+screen -dmS biglobe bash -c 'cd /opt/biglobe && source venv/bin/activate && python3 main.py'
+
+# Activation et démarrage du service
+echo "🚀 Activation du service..."
+systemctl enable biglobe
+systemctl start biglobe
+
+# Vérification du statut
+echo "📊 Vérification du statut..."
+systemctl status biglobe
+
+echo "✅ Configuration terminée !"
+echo "📝 Commandes utiles :"
+echo "   - Voir les logs : journalctl -u biglobe -f"
+echo "   - Redémarrer : systemctl restart biglobe"
+echo "   - Arrêter : systemctl stop biglobe"
+echo "   - Voir la session screen : screen -r biglobe"
 
 # En cas d'erreur
 if [ $? -ne 0 ]; then
