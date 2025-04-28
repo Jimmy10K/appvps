@@ -31,19 +31,31 @@ if ! command -v pip3 &> /dev/null; then
     exit 1
 fi
 
-# Vérifier si le fichier .env existe
-if [ ! -f .env ]; then
-    print_error "Le fichier .env n'existe pas. Veuillez le créer avec les variables suivantes :"
-    echo "TELEGRAM_BOT_TOKEN=votre_token_ici"
-    echo "TELEGRAM_CHAT_ID=votre_chat_id_ici"
-    exit 1
+# Vérifier si le fichier known_hosts existe et contient l'ancienne clé
+if [ -f ~/.ssh/known_hosts ]; then
+    if grep -q "96.9.124.6" ~/.ssh/known_hosts; then
+        print_message "Une ancienne clé SSH existe pour ce serveur."
+        read -p "Voulez-vous supprimer l'ancienne clé ? (y/n) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            ssh-keygen -R 96.9.124.6
+            print_success "Ancienne clé supprimée."
+        fi
+    fi
 fi
 
-# Vérifier si les variables d'environnement sont définies
-if ! grep -q "TELEGRAM_BOT_TOKEN" .env || ! grep -q "TELEGRAM_CHAT_ID" .env; then
-    print_error "Les variables TELEGRAM_BOT_TOKEN et TELEGRAM_CHAT_ID doivent être définies dans le fichier .env"
-    exit 1
-fi
+# Demander uniquement les informations Telegram
+print_message "Configuration du bot Telegram :"
+read -p "Entrez votre TELEGRAM_BOT_TOKEN : " TELEGRAM_BOT_TOKEN
+read -p "Entrez votre TELEGRAM_CHAT_ID : " TELEGRAM_CHAT_ID
+
+# Créer le fichier .env
+cat > .env << EOF
+TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
+TELEGRAM_CHAT_ID=$TELEGRAM_CHAT_ID
+EOF
+
+print_success "Fichier .env créé avec succès."
 
 # Créer un environnement virtuel s'il n'existe pas
 if [ ! -d "venv" ]; then
@@ -61,7 +73,7 @@ print_message "Installation des dépendances..."
 pip3 install -r requirements.txt
 
 # Configuration du service systemd
-echo "⚙️ Configuration du service systemd..."
+print_message "Configuration du service systemd..."
 cat > /etc/systemd/system/biglobe.service << EOF
 [Unit]
 Description=Biglobe Validator Service
@@ -71,9 +83,9 @@ StartLimitIntervalSec=0
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/biglobe
-Environment=PYTHONPATH=/opt/biglobe
-ExecStart=/opt/biglobe/venv/bin/python3 /opt/biglobe/main.py
+WorkingDirectory=$(pwd)
+Environment=PYTHONPATH=$(pwd)
+ExecStart=$(pwd)/venv/bin/python3 $(pwd)/main.py
 Restart=always
 RestartSec=10
 StartLimitBurst=0
@@ -83,35 +95,35 @@ WantedBy=multi-user.target
 EOF
 
 # Configuration SSH pour éviter les déconnexions
-echo "🔌 Configuration SSH..."
+print_message "Configuration SSH..."
 cat >> /etc/ssh/sshd_config << EOF
 ClientAliveInterval 60
 ClientAliveCountMax 3
 EOF
 
 # Redémarrage des services
-echo "🔄 Redémarrage des services..."
+print_message "Redémarrage des services..."
 systemctl daemon-reload
 systemctl restart sshd
 
 # Installation de screen
-echo "📺 Installation de screen..."
+print_message "Installation de screen..."
 apt install screen -y
 
 # Création de la session screen
-echo "🖥️ Création de la session screen..."
-screen -dmS biglobe bash -c 'cd /opt/biglobe && source venv/bin/activate && python3 main.py'
+print_message "Création de la session screen..."
+screen -dmS biglobe bash -c 'cd $(pwd) && source venv/bin/activate && python3 main.py'
 
 # Activation et démarrage du service
-echo "🚀 Activation du service..."
+print_message "Activation du service..."
 systemctl enable biglobe
 systemctl start biglobe
 
 # Vérification du statut
-echo "📊 Vérification du statut..."
+print_message "Vérification du statut..."
 systemctl status biglobe
 
-echo "✅ Configuration terminée !"
+print_success "Configuration terminée !"
 echo "📝 Commandes utiles :"
 echo "   - Voir les logs : journalctl -u biglobe -f"
 echo "   - Redémarrer : systemctl restart biglobe"
