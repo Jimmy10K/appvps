@@ -364,6 +364,10 @@ Commandes disponibles :
             processing_msg = await update.message.reply_text("⏳ Préparation de la vérification...")
             
             try:
+                # Vérifier que le fichier existe
+                if 'input_file' not in context.user_data:
+                    raise ValueError("Fichier d'entrée non trouvé")
+                
                 # Lire le fichier d'entrée
                 with open(context.user_data['input_file'], 'r', encoding='utf-8') as f:
                     combos = [line.strip() for line in f if ":" in line]
