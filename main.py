@@ -659,53 +659,49 @@ Commandes disponibles :
         return True
 
     async def process_combos(self, combos: List[str], receiver: str) -> List[str]:
-        """Traite les combos par lots de 200 avec un timeout de 30 secondes"""
+        """Traite les combos un par un avec un délai de 30 secondes"""
         valid_results = []
         total = len(combos)
         
-        # Diviser les combos en lots de 200
-        for i in range(0, total, self.BATCH_SIZE):
-            batch = combos[i:i + self.BATCH_SIZE]
-            batch_size = len(batch)
-            
-            # Message de début pour chaque lot
-            start_message = f"""
-🔍 Début du traitement du lot {i//self.BATCH_SIZE + 1}
+        for i, combo in enumerate(combos):
+            try:
+                # Message de début pour chaque combo
+                start_message = f"""
+🔍 Début du traitement du combo {i+1}/{total}
 ━━━━━━━━━━━━━━━━━━━━
-📊 Taille du lot: {batch_size} combos
-⏳ Timeout: 30 secondes par combo
+📊 Combo: {combo}
+⏳ Timeout: 30 secondes
 ━━━━━━━━━━━━━━━━━━━━
 💻 By @JYMMI10K
 """
-            await self.send_telegram_message(start_message)
-            
-            # Traiter le lot en parallèle
-            tasks = []
-            for combo in batch:
-                tasks.append(self.process_combo(combo, receiver))
-            
-            # Exécuter toutes les tâches en parallèle
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            
-            # Filtrer les résultats valides
-            for result in results:
-                if isinstance(result, str):
+                await self.send_telegram_message(start_message)
+                
+                # Traiter le combo
+                result = await self.process_combo(combo, receiver)
+                
+                # Ajouter le résultat si valide
+                if result:
                     valid_results.append(result)
-            
-            # Message de résultat pour le lot
-            result_message = f"""
-📊 Résultat du lot {i//self.BATCH_SIZE + 1}
+                    print(f"✅ Combo valide trouvé : {result}")
+                
+                # Message de résultat pour le combo
+                result_message = f"""
+📊 Résultat du combo {i+1}/{total}
 ━━━━━━━━━━━━━━━━━━━━
-✅ Valides dans ce lot: {len([r for r in results if isinstance(r, str)])}
-❌ Invalides dans ce lot: {len([r for r in results if r is None])}
-📈 Progression totale: {i + batch_size}/{total} ({int(((i + batch_size)/total)*100)}%)
+✅ Valide: {result is not None}
+📈 Progression totale: {i+1}/{total} ({int(((i+1)/total)*100)}%)
 ━━━━━━━━━━━━━━━━━━━━
 💻 By @JYMMI10K
 """
-            await self.send_telegram_message(result_message)
-            
-            # Attendre 30 secondes avant le prochain lot
-            await asyncio.sleep(30)
+                await self.send_telegram_message(result_message)
+                
+                # Attendre 30 secondes avant le prochain combo
+                print("⏳ Attente de 30 secondes...")
+                await asyncio.sleep(30)
+                
+            except Exception as e:
+                print(f"❌ Erreur lors du traitement du combo {combo} : {str(e)}")
+                continue
             
         return valid_results
 
