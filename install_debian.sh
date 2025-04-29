@@ -15,13 +15,17 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
+# Demande des informations Telegram
+read -p "Entrez votre token Telegram Bot: " BOT_TOKEN
+read -p "Entrez votre Chat ID Telegram: " CHAT_ID
+
 # Création du fichier .env
-echo "TELEGRAM_BOT_TOKEN=your_bot_token_here" > .env
-echo "TELEGRAM_CHAT_ID=your_chat_id_here" >> .env
+echo "TELEGRAM_BOT_TOKEN=$BOT_TOKEN" > .env
+echo "TELEGRAM_CHAT_ID=$CHAT_ID" >> .env
 
 # Rendre le script d'installation exécutable
 chmod +x start.sh
 
 echo "Installation terminée !"
-echo "1. Modifiez le fichier .env avec vos informations"
-echo "2. Lancez le bot avec : ./start.sh" 
+echo "Le fichier .env a été configuré avec vos informations"
+echo "Lancez le bot avec : ./start.sh" 
