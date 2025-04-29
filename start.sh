@@ -33,7 +33,7 @@ sudo pkill -f "python3 main.py"
 # Suppression des fichiers temporaires
 print_message "Suppression des fichiers temporaires..."
 sudo rm -f /tmp/tmp*
-sudo rm -f /home/appvps/tmp*
+sudo rm -f /root/appvps/tmp*
 
 # Suppression de l'ancien service
 print_message "Suppression de l'ancien service..."
@@ -42,14 +42,14 @@ sudo rm -f /etc/systemd/system/biglobe.service
 
 # Suppression de l'ancien environnement virtuel
 print_message "Suppression de l'ancien environnement virtuel..."
-sudo rm -rf /home/appvps/venv
+sudo rm -rf /root/appvps/venv
 
 # Création du répertoire de travail
 print_message "Création du répertoire de travail..."
-sudo mkdir -p /home/appvps
-sudo chown -R root:root /home/appvps
-sudo chmod -R 755 /home/appvps
-cd /home/appvps
+sudo mkdir -p /root/appvps
+sudo chown -R root:root /root/appvps
+sudo chmod -R 755 /root/appvps
+cd /root/appvps
 
 # Installation des dépendances système
 print_message "Installation des dépendances système..."
@@ -78,9 +78,9 @@ After=network.target
 Type=simple
 User=root
 Group=root
-WorkingDirectory=/home/appvps
-Environment=PATH=/home/appvps/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/home/appvps/venv/bin/python3 /home/appvps/main.py
+WorkingDirectory=/root/appvps
+Environment=PATH=/root/appvps/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/root/appvps/venv/bin/python3 /root/appvps/main.py
 Restart=always
 RestartSec=10
 
@@ -90,8 +90,8 @@ EOL
 
 # Configuration des permissions
 print_message "Configuration des permissions..."
-sudo chown -R root:root /home/appvps
-sudo chmod -R 755 /home/appvps
+sudo chown -R root:root /root/appvps
+sudo chmod -R 755 /root/appvps
 sudo chmod 644 /etc/systemd/system/biglobe.service
 
 # Rechargement de systemd
